@@ -171,5 +171,12 @@ else
   fi
 fi
 
+# 第四步：正文在就生成/更新索引（entries / sections / algorithm 三份速查）
+if [ -d "$BOOK_REPO/book" ] && [ -f "$CANONICAL/scripts/build-index.sh" ]; then
+  echo ""
+  echo "生成索引："
+  bash "$CANONICAL/scripts/build-index.sh" "$BOOK_REPO" || echo "  索引生成失败，不影响使用（skill 会回退到 grep 流程）。" >&2
+fi
+
 echo ""
 echo "完成。重启你的 Agent 后，问「每天通勤两小时值不值」之类的问题即可触发。"

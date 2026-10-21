@@ -42,6 +42,16 @@ fi
 
 整本约 1.3 MB，浅克隆一次几秒。书里的法条、补贴标准和截止日期经常更新，所以缓存超过 24 小时要拉一次新版；**离线或拉取失败时照常用手上的旧缓存回答**，并在答复里提醒用户内容可能不是最新（把 `git -C "$REPO" log -1 --format=%cd` 的日期带上）。
 
+**索引**：缓存目录的 `index/` 下应有三份速查文件（`entries.md` 条目定位索引、`sections.md` 节目录、`algorithm.md` 性价比算法），正常由 install.sh 生成。发现索引缺失或比正文旧（FETCH_HEAD 更新）时，用本 skill 目录下的脚本重建：
+
+```bash
+IDX="$(dirname "$REPO")/index"
+SKILL_DIR="$(cd "$(dirname "$0")/.." 2>/dev/null || echo "$HOME/.agents/skills/how-to-live-better")"
+if [ -d "$REPO/book" ] && { [ ! -f "$IDX/entries.md" ] || [ "$REPO/.git/FETCH_HEAD" -nt "$IDX/entries.md" ]; }; then
+  bash "$SKILL_DIR/scripts/build-index.sh" "$REPO" || true   # 失败不阻塞，回退到 grep 流程
+fi
+```
+
 **兜底**：不能用 git 时按文件取（文件名里的中文直接写就行）：
 
 ```bash
@@ -52,7 +62,7 @@ curl -fsSL --compressed "https://raw.githubusercontent.com/eternity4719/HowToLiv
 
 ## 第 2 步：定位到节
 
-先挑 1 到 3 节：读仓库根目录 `README.md` 里「这本书想回答的问题」那张表（一节一行，写明这一节回答什么问题，并带着 `book/` 下对应的文件名），按用户问的事对上号。节的增删都反映在那张表里，这里不另留一份清单。
+有索引就先读 `index/sections.md`（问题 → 节文件，一张表）；没有再读仓库根目录 `README.md` 里「这本书想回答的问题」那张表（一节一行，写明这一节回答什么问题，并带着 `book/` 下对应的文件名），按用户问的事对上号。先挑 1 到 3 节。节的增删都反映在那张表里，这里不另留一份清单。
 
 节文件就在 `book/` 下，文件名自带节号和节名，`ls book/` 也能看全。
 
@@ -60,7 +70,9 @@ curl -fsSL --compressed "https://raw.githubusercontent.com/eternity4719/HowToLiv
 
 ## 第 3 步：把条目捞出来
 
-节文件最大的有 110 KB，别整篇读，按关键词捞。有 Grep / 文件搜索类工具就用工具，只有 shell 就用命令：
+有索引就先查 `index/entries.md`：按关键词扫一遍标题和编号，锁定候选条目（编号是 `节号-条号`，如 `8-17`），**然后回原文把条目整条读完**——索引只用于定位，尤其是「备注」栏：适用人群、争议、例外都写在那里，只读索引行会把条件丢掉。
+
+没有索引（或索引里找不到）就直接捞正文。节文件最大的有 110 KB，别整篇读，按关键词捞。有 Grep / 文件搜索类工具就用工具，只有 shell 就用命令：
 
 ```bash
 grep -rn '^### ' book/ | grep -E '关键词1|关键词2'        # 先看有哪些条目标题
@@ -89,10 +101,10 @@ sed -n '/^### 16\. /,/^### 17\. /p' book/08-别把自己搭进去.md  # 按条�
 
 排序照书的算法，别凭感觉：
 
-1. 档位的算法以仓库根目录的 `index.html` 为准，别凭记忆写，当场把那两行抠出来照着算：
+1. 档位的算法以仓库根目录的 `index.html` 为准。有索引就直接读 `index/algorithm.md`（已抠好）；没有就别凭记忆写，当场把那几行抠出来照着算：
 
    ```bash
-   grep -n 'COST_W = \|e\.ratio = ' index.html
+   grep -n -A1 'COST_W = \|e\.ratio = ' index.html
    ```
 
    前一行是三项成本各档的权重，成本分 = 钱 + 时间 + 毅力三项相加；后一行是收益量级配上成本分怎么落到「极高 / 高 / 一般」。

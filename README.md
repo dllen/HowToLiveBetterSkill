@@ -63,6 +63,20 @@ skill 不内嵌书，但**安装时就会把整本书装到缓存目录** `${XDG
 
 离线或拉取失败时照常使用现有缓存，skill 会在答复里注明内容日期。取不到正文时会如实说明，不会凭记忆复述书的内容。
 
+## 索引
+
+安装时还会从正文生成三份速查文件到 `${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/index/`：
+
+- `entries.md`：全部条目的定位索引（编号、标题、钱/时间/毅力成本、收益量级、口径、证据等级）——skill 靠它直接定位条目，不再每次 grep 全书；
+- `sections.md`：节目录（这节回答什么问题 → 哪个文件）；
+- `algorithm.md`：性价比档位算法（`COST_W` + `e.ratio`，从 `index.html` 抠好）。
+
+索引只用于定位，正文仍以原文为准；正文更新后（install.sh 重跑或 skill 运行时检测到更新）自动重建。索引缺失时 skill 回退到 grep 流程，不影响使用。手动重建：
+
+```bash
+bash skills/how-to-live-better/scripts/build-index.sh
+```
+
 ## 署名与改编说明
 
 - 书的内容：**《高性价比人生指南》**，作者 eternity4719，仓库 <https://github.com/eternity4719/HowToLiveBetter>，许可 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)。
