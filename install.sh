@@ -23,7 +23,7 @@ SRC="$ROOT/skills/$SKILL_NAME"
 CANONICAL="$HOME/.agents/skills/$SKILL_NAME"
 BOOK_REPO="${XDG_CACHE_HOME:-$HOME/.cache}/how-to-live-better/repo"
 LOCAL_BOOK="$ROOT/upstream"   # git submodule：上游书的本地副本
-UPSTREAM_URL="https://github.com/eternity4719/HowToLiveBetter.git"
+UPSTREAM_URL="${HLTB_UPSTREAM_URL:-https://github.com/eternity4719/HowToLiveBetter.git}"   # 可用环境变量换成镜像地址
 
 if [ ! -f "$SRC/SKILL.md" ]; then
   echo "找不到 $SRC/SKILL.md，请在项目根目录运行本脚本。" >&2
@@ -151,6 +151,10 @@ elif [ -d "$BOOK_REPO/.git" ]; then
   fi
 else
   echo ""
+  if [ -d "$BOOK_REPO" ] && [ ! -d "$BOOK_REPO/.git" ]; then
+    echo "检测到静态快照缓存，升级为可更新的 git 缓存："
+    rm -rf "$BOOK_REPO"
+  fi
   if [ -f "$LOCAL_BOOK/book/01-不要早死.md" ]; then
     echo "从本地 upstream 子仓库装正文（不需要网络）："
     if git -c protocol.file.allow=always clone --quiet "$LOCAL_BOOK" "$BOOK_REPO"; then
@@ -165,6 +169,14 @@ else
     if git clone --depth 1 --quiet "$UPSTREAM_URL" "$BOOK_REPO"; then
       touch "$BOOK_REPO/.git/FETCH_HEAD"   # clone 不产生 FETCH_HEAD，补一个作为新鲜度时间戳
       echo "  -> $BOOK_REPO"
+    elif [ -f "$ROOT/data/book/01-不要早死.md" ]; then
+      echo "  在线克隆失败，改用项目内置快照（版本见 SNAPSHOT）："
+      mkdir -p "$BOOK_REPO"
+      cp -R "$ROOT/data/book" "$ROOT/data/docs" "$BOOK_REPO/"
+      cp "$ROOT/data/README.md" "$ROOT/data/index.html" "$ROOT/data/SNAPSHOT" "$BOOK_REPO/"
+      mkdir -p "$(dirname "$BOOK_REPO")/index"
+      cp -R "$ROOT/data/index/." "$(dirname "$BOOK_REPO")/index/"
+      echo "  -> ${BOOK_REPO}（静态快照，无 .git；联网后重跑 ./install.sh 可升级为可自动更新的 git 缓存）"
     else
       echo "  克隆失败（没网？或先跑 git submodule update --init）。skill 已装好，首次使用时会自动重试。" >&2
     fi
@@ -172,7 +184,8 @@ else
 fi
 
 # 第四步：正文在就生成/更新索引（entries / sections / algorithm 三份速查）
-if [ -d "$BOOK_REPO/book" ] && [ -f "$CANONICAL/scripts/build-index.sh" ]; then
+# 快照缓存（无 .git）的索引已随快照复制，跳过重建，保留快照里的原始日期。
+if [ -d "$BOOK_REPO/.git" ] && [ -f "$CANONICAL/scripts/build-index.sh" ]; then
   echo ""
   echo "生成索引："
   bash "$CANONICAL/scripts/build-index.sh" "$BOOK_REPO" || echo "  索引生成失败，不影响使用（skill 会回退到 grep 流程）。" >&2

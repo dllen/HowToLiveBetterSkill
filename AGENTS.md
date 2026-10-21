@@ -7,6 +7,8 @@
 ```
 skills/how-to-live-better/SKILL.md              # 唯一规则文件，所有 Agent 共用，不维护多份
 skills/how-to-live-better/scripts/build-index.sh # 索引生成器（随 skill 一起安装）
+scripts/update-snapshot.sh                       # 从 upstream/ 刷新 data/ 快照
+data/                               # 内容+索引快照（提交进仓库，无网无子模块时的安装保底）
 upstream/                            # git submodule：上游书仓库，同步/离线安装用
 install.sh                            # 唯一脚本：安装/更新/卸载 skill 和正文缓存
 README.md                             # 面向用户的安装说明 + 署名（CC-BY-4.0 义务）
@@ -32,7 +34,8 @@ HOME="$FAKEHOME" XDG_CACHE_HOME="$FAKECACHE" ./install.sh
 - **单文件原则**：SKILL.md 是唯一规则文件，所有 Agent 共用。改逻辑只改它，README 里只放安装/署名信息。
 - **改编边界**：SKILL.md 逻辑骨架与上游 `upstream/skills/life-decision-guide/SKILL.md` 保持一致，改动只许落在工具层和路径。同步上游：`git -C upstream pull`，对照 `upstream/skills/life-decision-guide/SKILL.md` 的 diff 改动，同步后更新 README「署名与改编说明」里的同步日期（CC-BY-4.0 要求注明改编和版本日期）。
 - **安装策略**：实体文件装到通用目录 `~/.agents/skills/<name>`（Codex/Cursor/Gemini CLI/Copilot/OpenCode 都读），其余 Agent 目录建符号链接指过去；检测依据是各 Agent 配置目录是否存在（`~/.claude`、`~/.hermes` 等）。
-- **正文缓存**：`${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`。install.sh 优先从本地 `upstream/` 子模块克隆（离线可装），子模块未检出才回退在线浅克隆；从子模块克隆后必须把缓存的 origin 重设回上游 URL（`remote set-url`），否则后续 pull 会打到本地路径。运行时距上次 pull 超 24h 才更新；离线/拉取失败用旧缓存并如实说明，**禁止凭模型记忆补书的内容**。
+- **正文缓存**：`${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`。install.sh 装正文按三级优先级：`upstream/` 子模块本地克隆 → 在线浅克隆 → `data/` 内置快照（静态，无 .git，带 SNAPSHOT 标记；重跑 install.sh 时检测快照会先 rm 再升级为 git 缓存）。从子模块克隆后必须把缓存的 origin 重设回上游 URL（`remote set-url`），否则后续 pull 会打到本地路径。运行时距上次 pull 超 24h 才更新；离线/拉取失败用旧缓存并如实说明，**禁止凭模型记忆补书的内容**。
+- **快照**：同步上游后跑 `./scripts/update-snapshot.sh` 刷新 `data/`（内容 + 预构建索引 + SNAPSHOT），data/ 提交进仓库。快照缓存的索引随快照复制，install.sh 不再重建（保留快照原始日期）。
 - **索引**：`build-index.sh [REPO] [OUT]` 从正文生成 `index/`（entries.md 定位索引 / sections.md 节目录 / algorithm.md 性价比算法），install.sh 装完正文自动跑，运行时 FETCH_HEAD 比索引新也会重建。索引只做定位，SKILL.md 强制回原文读整条；索引缺失回退 grep。改动 book 解析逻辑后对账：索引条数 = `grep -h -c '^### ' upstream/book/*.md` 之和。
 - **frontmatter**：description 中文、含核心触发词（自动触发靠它）、≤80 字符、含中文冒号时整段用引号包。
 - 文档与脚本注释一律简体中文。

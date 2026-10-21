@@ -31,7 +31,9 @@ description: "照《高性价比人生指南》查了再答：该不该做、值
 ```bash
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/how-to-live-better"
 REPO="$CACHE/repo"
-if [ ! -d "$REPO/.git" ]; then
+if [ -d "$REPO/book" ] && [ ! -d "$REPO/.git" ]; then
+  :   # 静态快照（install.sh 用项目内置 data/ 装的）：直接用，日期读 "$REPO/SNAPSHOT"
+elif [ ! -d "$REPO/.git" ]; then
   mkdir -p "$CACHE"
   git clone --depth 1 https://github.com/eternity4719/HowToLiveBetter.git "$REPO"
   touch "$REPO/.git/FETCH_HEAD"   # clone 不产生 FETCH_HEAD，补一个作为时间戳
@@ -40,7 +42,7 @@ elif [ ! -f "$REPO/.git/FETCH_HEAD" ] || [ -n "$(find "$REPO/.git/FETCH_HEAD" -m
 fi
 ```
 
-整本约 1.3 MB，浅克隆一次几秒。书里的法条、补贴标准和截止日期经常更新，所以缓存超过 24 小时要拉一次新版；**离线或拉取失败时照常用手上的旧缓存回答**，并在答复里提醒用户内容可能不是最新（把 `git -C "$REPO" log -1 --format=%cd` 的日期带上）。
+整本约 1.3 MB，浅克隆一次几秒。书里的法条、补贴标准和截止日期经常更新，所以 git 缓存超过 24 小时要拉一次新版；**离线或拉取失败时照常用手上的旧缓存回答**，并在答复里提醒用户内容可能不是最新。缓存是静态快照时（无 `.git`、带 `SNAPSHOT` 文件）无法自动更新，答复里带 `SNAPSHOT` 里的日期，并提醒用户联网后重跑 install.sh 升级成 git 缓存。
 
 **索引**：缓存目录的 `index/` 下应有三份速查文件（`entries.md` 条目定位索引、`sections.md` 节目录、`algorithm.md` 性价比算法），正常由 install.sh 生成。发现索引缺失或比正文旧（FETCH_HEAD 更新）时，用本 skill 目录下的脚本重建：
 
