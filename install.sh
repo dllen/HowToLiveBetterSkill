@@ -18,9 +18,12 @@
 set -euo pipefail
 
 SKILL_NAME="how-to-live-better"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills/$SKILL_NAME"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$ROOT/skills/$SKILL_NAME"
 CANONICAL="$HOME/.agents/skills/$SKILL_NAME"
 BOOK_REPO="${XDG_CACHE_HOME:-$HOME/.cache}/how-to-live-better/repo"
+LOCAL_BOOK="$ROOT/upstream"   # git submodule：上游书的本地副本
+UPSTREAM_URL="https://github.com/eternity4719/HowToLiveBetter.git"
 
 if [ ! -f "$SRC/SKILL.md" ]; then
   echo "找不到 $SRC/SKILL.md，请在项目根目录运行本脚本。" >&2
@@ -148,12 +151,23 @@ elif [ -d "$BOOK_REPO/.git" ]; then
   fi
 else
   echo ""
-  echo "克隆正文（约 1.3 MB）："
-  if git clone --depth 1 --quiet https://github.com/eternity4719/HowToLiveBetter.git "$BOOK_REPO"; then
-    touch "$BOOK_REPO/.git/FETCH_HEAD"   # clone 不产生 FETCH_HEAD，补一个作为新鲜度时间戳
-    echo "  -> $BOOK_REPO"
+  if [ -f "$LOCAL_BOOK/book/01-不要早死.md" ]; then
+    echo "从本地 upstream 子仓库装正文（不需要网络）："
+    if git -c protocol.file.allow=always clone --quiet "$LOCAL_BOOK" "$BOOK_REPO"; then
+      git -C "$BOOK_REPO" remote set-url origin "$UPSTREAM_URL"   # 后续更新仍指向上游
+      touch "$BOOK_REPO/.git/FETCH_HEAD"
+      echo "  -> $BOOK_REPO"
+    else
+      echo "  本地克隆失败。" >&2
+    fi
   else
-    echo "  克隆失败（没网？）。skill 已装好，首次使用时会自动重试。" >&2
+    echo "克隆正文（约 1.3 MB）："
+    if git clone --depth 1 --quiet "$UPSTREAM_URL" "$BOOK_REPO"; then
+      touch "$BOOK_REPO/.git/FETCH_HEAD"   # clone 不产生 FETCH_HEAD，补一个作为新鲜度时间戳
+      echo "  -> $BOOK_REPO"
+    else
+      echo "  克隆失败（没网？或先跑 git submodule update --init）。skill 已装好，首次使用时会自动重试。" >&2
+    fi
   fi
 fi
 

@@ -7,10 +7,12 @@
 ## 快速安装
 
 ```bash
-git clone https://github.com/dllen/HowToLiveBetterSkill.git
+git clone --recursive https://github.com/dllen/HowToLiveBetterSkill.git
 cd HowToLiveBetterSkill
 ./install.sh
 ```
+
+已经用不带 `--recursive` 的方式 clone 了的话，补一句 `git submodule update --init` 即可。`upstream/` 是上游书仓库的子模块：装了它，`install.sh` 装正文时不需要网络；不装也行，脚本会自动回退到在线克隆。
 
 `install.sh` 会自动检测本机装了哪些 Agent，装到对应目录。也支持：
 
@@ -49,7 +51,10 @@ skill 本体只有一个 `skills/how-to-live-better/SKILL.md`，遵循 [Agent Sk
 
 ## 正文从哪来
 
-skill 不内嵌书，但**安装时就会把整本书浅克隆（约 1.3 MB）到缓存目录** `${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`，装完即离线可用。
+skill 不内嵌书，但**安装时就会把整本书装到缓存目录** `${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`，装完即离线可用。正文来源按优先级：
+
+1. **本地子模块** `upstream/`（上游仓库的 git submodule）——已检出时直接从本地克隆，**整个安装过程不需要网络**；装完后缓存的 origin 仍指向上游，后续更新照常在联网时进行；
+2. **在线浅克隆**（约 1.3 MB）——子模块没检出时的回退路径。
 
 更新有两条路径，不冲突：
 
