@@ -4,18 +4,23 @@
 # 用法：
 #   ./install.sh              自动检测本机装了哪些 Agent，装到对应目录
 #   ./install.sh --all        不检测，全部目标都装
-#   ./install.sh --uninstall  从所有目标目录移除
+#   ./install.sh --no-book    跳过正文克隆（可与其它参数组合）
+#   ./install.sh --uninstall  从所有目标目录移除（含正文缓存）
 #   ./install.sh --list       列出支持的目标和检测结果
 #
 # 安装策略：实体文件放在通用目录 ~/.agents/skills/how-to-live-better
 # （Codex / Cursor / Gemini CLI / GitHub Copilot / OpenCode 都读这里），
 # 其余目标目录用符号链接指过去，以后 git pull 更新一处即可。
+# 书的正文克隆到 ${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo，
+# 装完即离线可用；skill 运行时距上次更新超 24h 会自动 pull，
+# 重跑本脚本也会更新正文。
 
 set -euo pipefail
 
 SKILL_NAME="how-to-live-better"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills/$SKILL_NAME"
 CANONICAL="$HOME/.agents/skills/$SKILL_NAME"
+BOOK_REPO="${XDG_CACHE_HOME:-$HOME/.cache}/how-to-live-better/repo"
 
 if [ ! -f "$SRC/SKILL.md" ]; then
   echo "找不到 $SRC/SKILL.md，请在项目根目录运行本脚本。" >&2
@@ -33,13 +38,16 @@ TARGETS=(
 )
 
 MODE="auto"
-case "${1:-}" in
-  --all) MODE="all" ;;
-  --uninstall) MODE="uninstall" ;;
-  --list) MODE="list" ;;
-  "") ;;
-  *) echo "未知参数：$1（支持 --all / --uninstall / --list）" >&2; exit 1 ;;
-esac
+NO_BOOK=false
+for arg in "$@"; do
+  case "$arg" in
+    --all) MODE="all" ;;
+    --uninstall) MODE="uninstall" ;;
+    --list) MODE="list" ;;
+    --no-book) NO_BOOK=true ;;
+    *) echo "未知参数：${arg}（支持 --all / --no-book / --uninstall / --list）" >&2; exit 1 ;;
+  esac
+done
 
 target_detected() {
   local entry="$1"
@@ -83,6 +91,10 @@ if [ "$MODE" = "uninstall" ]; then
       echo "  已移除 $dest"
     fi
   done
+  if [ -d "$(dirname "$BOOK_REPO")" ]; then
+    rm -rf "$(dirname "$BOOK_REPO")"
+    echo "  已移除正文缓存 $(dirname "$BOOK_REPO")"
+  fi
   echo "完成。"
   exit 0
 fi
@@ -120,6 +132,29 @@ if [ "$installed_any" = false ] && [ "$MODE" = "auto" ]; then
   echo "没有检测到任何 Agent 的配置目录，只装了通用目录 ${CANONICAL}。"
   echo "Codex / Cursor / Gemini CLI / Copilot / OpenCode 会直接读到它。"
   echo "其他 Agent 可用 ./install.sh --all 强制全装，或看 README 手动安装。"
+fi
+
+# 第三步：克隆书的正文到缓存目录（装完即离线可用；重跑本脚本即更新）
+if [ "$NO_BOOK" = true ]; then
+  echo ""
+  echo "按 --no-book 跳过正文克隆。"
+elif [ -d "$BOOK_REPO/.git" ]; then
+  echo ""
+  echo "更新正文缓存："
+  if git -C "$BOOK_REPO" pull --ff-only --quiet; then
+    echo "  已是最新：${BOOK_REPO}（$(git -C "$BOOK_REPO" log -1 --format=%cd --date=short)）"
+  else
+    echo "  拉取失败，保留现有缓存（离线可继续用）。"
+  fi
+else
+  echo ""
+  echo "克隆正文（约 1.3 MB）："
+  if git clone --depth 1 --quiet https://github.com/eternity4719/HowToLiveBetter.git "$BOOK_REPO"; then
+    touch "$BOOK_REPO/.git/FETCH_HEAD"   # clone 不产生 FETCH_HEAD，补一个作为新鲜度时间戳
+    echo "  -> $BOOK_REPO"
+  else
+    echo "  克隆失败（没网？）。skill 已装好，首次使用时会自动重试。" >&2
+  fi
 fi
 
 echo ""

@@ -15,8 +15,9 @@ cd HowToLiveBetterSkill
 `install.sh` 会自动检测本机装了哪些 Agent，装到对应目录。也支持：
 
 - `./install.sh --all`：不检测，全部目标都装
+- `./install.sh --no-book`：跳过正文克隆（可与其它参数组合）
 - `./install.sh --list`：列出支持的目标和检测结果
-- `./install.sh --uninstall`：从所有目标目录移除
+- `./install.sh --uninstall`：从所有目标目录移除（含正文缓存）
 
 ## 支持哪些 Agent
 
@@ -48,7 +49,14 @@ skill 本体只有一个 `skills/how-to-live-better/SKILL.md`，遵循 [Agent Sk
 
 ## 正文从哪来
 
-skill 不内嵌书（1.3 MB 且政策类条目经常更新），首次使用时浅克隆到缓存目录 `${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`，之后距上次更新超过 24 小时才自动 `git pull`。取不到网络时 skill 会如实说明，不会凭记忆复述书的内容。
+skill 不内嵌书，但**安装时就会把整本书浅克隆（约 1.3 MB）到缓存目录** `${XDG_CACHE_HOME:-~/.cache}/how-to-live-better/repo`，装完即离线可用。
+
+更新有两条路径，不冲突：
+
+- **自动**：skill 每次被触发时检查缓存，距上次更新超过 24 小时才 `git pull`；
+- **手动**：重跑 `./install.sh` 即更新正文（已存在缓存时自动走 pull）。
+
+离线或拉取失败时照常使用现有缓存，skill 会在答复里注明内容日期。取不到正文时会如实说明，不会凭记忆复述书的内容。
 
 ## 署名与改编说明
 
